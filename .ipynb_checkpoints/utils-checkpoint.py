@@ -1,68 +1,65 @@
 import random
 import numpy as np
-
-
-
-
-
-def train_validation_test_split(df, train_size=0.6,
-                                validation_size=.1, seed=None):
-    """ Split data into train, validation, and test set """
+import pandas as pd
     
-    random.seed(seed)
-    index = list(df.index)
-    random.shuffle(index)
-    #print(index[0:10])
-    df = df.loc[index]
-    df = df.reset_index()
-    data_len = len(index)
-    train_idx = int(data_len*train_size)
-    validation_idx = int(data_len*validation_size) + train_idx
-    #print (train_idx,validation_idx)
-    train_data_set = df.loc[range(train_idx)]
-    validation_set = df.loc[range(train_idx,validation_idx)]
-    test_set = df.loc[range(validation_idx, data_len)]
     
-    return train_data_set, validation_set, test_set
+def data_cleaning(data_used):
+    name_L = [ 'None',"AmPhos","CataCXium A", "dtbpf" ]
+    data = data_used.copy() 
+    index = data[data["Ligand_Short_Hand"].isin(name_L)].index
+    data = data.drop(index)
+
+    name_B = ['None']
+    data = data.copy() 
+    index = data[data["Base_Short_Hand"].isin(name_B)].index
+    data = data.drop(index)
+
+    name_S = ['THF_V2']
+    data = data.copy() 
+    index = data[data["Solvent_1_Short_Hand"].isin(name_S)].index
+    data = data.drop(index)
+    return data
 
 
 
-
-
-class DataManager():
-    ''' A class for one-hot encoding of the data and generating batches 
-        for tensorflow'''
+def name_to_descrip(xls,name,class_):
+    df_ = pd.read_excel(xls, class_)
+    features = df_[lambda df_: df_[class_] == name]
+    features = features.drop([class_], axis=1)
+    return features
     
-    def __init__(self, df, data_fields, unique_fields_list):
-        self.df = df
-        self.X = self.encode(self.df, data_fields, unique_fields_list)
-        self.Y = self.df['Product_Yield_PCT_Area_UV'].as_matrix()
-        # create numpy array and scale to range 0.0 to 1.0 
-        self.Y = np.array(self.Y) / 100
-        self.curr_idx= 0
-        
-        
-        
-    def next_batch(self, batch_size):
-        x = self.X[self.curr_idx: self.curr_idx+batch_size]
-        y = self.Y[self.curr_idx: self.curr_idx+batch_size]
-        
-        self.curr_idx = (self.curr_idx + batch_size) % len(self.X)
-        if x.shape[1] !=37:
-            raise ValueError("Wrong shape")
-        return x, y
+
+def dic_discriptors(xls,df_Ligands,df_Bases,df_Solvents):   
+    L_name_LI = df_Ligands['Ligand_Short_Hand'].unique().tolist() 
+    L_name_BASE = df_Bases['Base_Short_Hand'].unique().tolist() 
+    L_name_SOLV = df_Solvents['Solvent_1_Short_Hand'].unique().tolist() 
+    list1 =  L_name_LI + L_name_BASE + L_name_SOLV
+    list2 = []
+    for name in list1:
+        if name in L_name_LI:
+            class_ = "Ligand_Short_Hand"        
+        if name in L_name_BASE:
+            class_ = "Base_Short_Hand"
+        if name in L_name_SOLV:
+            class_ = "Solvent_1_Short_Hand"
+
+        list2.append(name_to_descrip(xls,name.strip(),class_).values)
+    dic = dict( zip( list1, list2))
     
-    def encode(self, df, data_fields, unique_fields_list):
-        def one_hot_encode(data, labels):
-            #print (labels)
-            #print (data[0:10])
-            n = len(data)
-            n_labels = len(labels)
-            idxs = [labels.index(l) for l in data]
-            one_hot_encoded =   np.zeros([n, n_labels])
-            one_hot_encoded[range(n), idxs] = 1
-            return one_hot_encoded
+    return dic
+
+
+ 
+def data_discreptors(data_used,xls,df_Ligands,df_Bases,df_Solvents):
+    data = data_cleaning(data_used)
+    dic = dic_discriptors(xls,df_Ligands,df_Bases,df_Solvents)
+    for col in ["Ligand_Short_Hand", 'Base_Short_Hand', "Solvent_1_Short_Hand" ]:
+        df_ = pd.read_excel(xls, col)
+        L = list(df_.columns)[1:]
+        num_descrip = len(L)
+    
+    
+        for i, desc_name in zip(range(num_descrip), L):
+            data[col + "_descrip_" + desc_name ] = data[col].apply(lambda name: dic[name.strip()][0][i])
             
-        X = [df[field].as_matrix() for field in data_fields]
-        X_one_hot = list(map(one_hot_encode, X, unique_fields_list))
-        return np.concatenate(X_one_hot, axis=1)
+    return data
