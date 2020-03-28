@@ -10,7 +10,6 @@ import os
 import sys 
 import time
 import random
-from tqdm import tqdm
 import time
 from numpy.linalg import inv
 import warnings
