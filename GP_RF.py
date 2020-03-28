@@ -148,6 +148,7 @@ def kernel_matrix(model, X_train_test):
     end_time = (time.time() - start_time)/60
     
     print(f"Processing took {end_time} min time using multiprocessing.")
+    
     output = [x for x in result]
     
     matrix = np.zeros((X_train_test.shape[0], X_train_test.shape[0]))
@@ -269,7 +270,7 @@ if __name__ == "__main__":
 
     
     Y_just_descri_normal = (Y_just_descri - np.mean(Y_just_descri))
-    X_train, X_test,y_train, y_test = train_test_split(X_just_descri.head(3000), Y_just_descri_normal.head(3000), train_size=0.8, random_state = 2) 
+    X_train, X_test,y_train, y_test = train_test_split(X_just_descri.head(100), Y_just_descri_normal.head(100), train_size=0.8, random_state = 2) 
     models = [RandomForestRegressor(n_estimators=200)]
     preds, r2_values, rmse_values  = fit_models(X_train,
                                             X_test,
